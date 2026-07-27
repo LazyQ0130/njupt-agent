@@ -1,0 +1,6 @@
+target/
+data/
+*.log
+.local-mysql-data*/
+.local-mysql.cnf
+

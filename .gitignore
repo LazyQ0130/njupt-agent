@@ -1,0 +1,15 @@
+.env
+.env.production
+deploy/njupt_ai_deploy_key
+deploy/njupt_ai_deploy_key.pub
+*.log
+node_modules/
+dist/
+tmp/
+output/
+*.tar.gz
+qa-*.png
+preview-*.png
+backend/data/
+backend/.local-mysql-data*/
+backend/.local-mysql.cnf

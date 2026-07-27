@@ -1,0 +1,185 @@
+name: njupt-ai-production
+
+x-logging: &default-logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "3"
+
+services:
+  gateway:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    volumes:
+      - ./deploy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - frontend
+      - backend
+    logging: *default-logging
+
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        VITE_API_BASE_URL: ${PUBLIC_ORIGIN:-https://njupt-ai.top}
+    restart: unless-stopped
+    expose:
+      - "80"
+    logging: *default-logging
+
+  backend:
+    build:
+      context: ./backend
+    restart: unless-stopped
+    env_file:
+      - ${APP_ENV_FILE:-.env.production}
+    environment:
+      SERVER_PORT: "8080"
+      DATABASE_URL: jdbc:mysql://mysql:3306/njupt_ai_assistant?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true&useSSL=false
+      REDIS_HOST: redis
+      REDIS_PORT: "6379"
+      RATE_LIMIT_REDIS_URI: redis://:${REDIS_PASSWORD:?Set REDIS_PASSWORD in .env.production}@redis:6379
+      RAG_SERVICE_BASE_URL: http://knowledge-service:8090
+      CRAWLER_SERVICE_BASE_URL: http://crawler-service:8091
+      FILE_UPLOAD_PATH: /app/data/uploads
+      JAVA_TOOL_OPTIONS: -Xms256m -Xmx768m -XX:+UseG1GC
+    expose:
+      - "8080"
+    volumes:
+      - njupt_uploads:/app/data/uploads
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      knowledge-service:
+        condition: service_healthy
+    logging: *default-logging
+
+  mysql:
+    image: mysql:8.4
+    restart: unless-stopped
+    environment:
+      MYSQL_DATABASE: njupt_ai_assistant
+      MYSQL_USER: ${MYSQL_USERNAME:?Set MYSQL_USERNAME in .env.production}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:?Set MYSQL_PASSWORD in .env.production}
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:?Set MYSQL_ROOT_PASSWORD in .env.production}
+      TZ: Asia/Shanghai
+    command:
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_0900_ai_ci
+      - --innodb-buffer-pool-size=256M
+      - --max-connections=80
+    volumes:
+      - njupt_mysql_data:/var/lib/mysql
+      - ./backend/sql/schema.sql:/docker-entrypoint-initdb.d/001-schema.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h localhost -u root -p$$MYSQL_ROOT_PASSWORD --silent"]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+      start_period: 30s
+    logging: *default-logging
+
+  redis:
+    image: redis:7.4-alpine
+    restart: unless-stopped
+    environment:
+      REDIS_PASSWORD: ${REDIS_PASSWORD:?Set REDIS_PASSWORD in .env.production}
+    command:
+      - /bin/sh
+      - -c
+      - exec redis-server --appendonly yes --requirepass "$$REDIS_PASSWORD"
+    volumes:
+      - njupt_redis_data:/data
+    healthcheck:
+      test: ["CMD-SHELL", "redis-cli -a \"$$REDIS_PASSWORD\" ping | grep PONG"]
+      interval: 10s
+      timeout: 3s
+      retries: 10
+    logging: *default-logging
+
+  knowledge-service:
+    build:
+      context: ./knowledge-service
+    restart: unless-stopped
+    environment:
+      EMBEDDING__PROVIDER: ${EMBEDDING_PROVIDER:-hash}
+      EMBEDDING__API_KEY: ${EMBEDDING_API_KEY:-}
+      EMBEDDING__BASE_URL: ${EMBEDDING_BASE_URL:-}
+      EMBEDDING__MODEL: ${EMBEDDING_MODEL:-text-embedding-3-small}
+      CHROMA__PERSIST_DIRECTORY: /app/data/chroma
+      CHROMA__COLLECTION_NAME: ${CHROMA_COLLECTION_NAME:-njupt_knowledge}
+      CHUNKING__CHUNK_SIZE_TOKENS: ${CHUNK_SIZE_TOKENS:-800}
+      CHUNKING__CHUNK_OVERLAP_TOKENS: ${CHUNK_OVERLAP_TOKENS:-100}
+    expose:
+      - "8090"
+    volumes:
+      - njupt_chroma_data:/app/data/chroma
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "python",
+          "-c",
+          "import urllib.request; urllib.request.urlopen('http://localhost:8090/health', timeout=2)",
+        ]
+      interval: 10s
+      timeout: 3s
+      retries: 10
+      start_period: 20s
+    logging: *default-logging
+
+  crawler-service:
+    build:
+      context: ./crawler-service
+    restart: unless-stopped
+    environment:
+      BACKEND_BASE_URL: http://backend:8080
+      CRAWLER_SHARED_TOKEN: ${CRAWLER_SHARED_TOKEN:?Set CRAWLER_SHARED_TOKEN in .env.production}
+      CRAWLER_MAX_PAGES: ${CRAWLER_MAX_PAGES:-50}
+      CRAWLER_MAX_DEPTH: ${CRAWLER_MAX_DEPTH:-2}
+      CRAWLER_REQUEST_DELAY_SECONDS: ${CRAWLER_REQUEST_DELAY_SECONDS:-1.5}
+      CRAWLER_REQUEST_TIMEOUT_SECONDS: ${CRAWLER_REQUEST_TIMEOUT_SECONDS:-15}
+      CRAWLER_MAX_RETRIES: ${CRAWLER_MAX_RETRIES:-2}
+      CRAWLER_ALLOWED_DOMAINS: ${CRAWLER_ALLOWED_DOMAINS:-www.njupt.edu.cn,jwc.njupt.edu.cn,cs.njupt.edu.cn}
+      CRAWLER_SEED_URLS: ${CRAWLER_SEED_URLS:-https://www.njupt.edu.cn/,https://jwc.njupt.edu.cn/,https://cs.njupt.edu.cn/}
+      CRAWLER_STATE_DATABASE: /app/data/crawler.db
+      CRAWLER_SCHEDULE_ENABLED: ${CRAWLER_SCHEDULE_ENABLED:-true}
+      CRAWLER_SCHEDULE_INTERVAL_HOURS: ${CRAWLER_SCHEDULE_INTERVAL_HOURS:-24}
+    expose:
+      - "8091"
+    volumes:
+      - njupt_crawler_data:/app/data
+    depends_on:
+      backend:
+        condition: service_started
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "python",
+          "-c",
+          "import urllib.request; urllib.request.urlopen('http://localhost:8091/health', timeout=2)",
+        ]
+      interval: 10s
+      timeout: 3s
+      retries: 10
+      start_period: 15s
+    logging: *default-logging
+
+volumes:
+  caddy_data:
+  caddy_config:
+  njupt_mysql_data:
+  njupt_redis_data:
+  njupt_chroma_data:
+  njupt_crawler_data:
+  njupt_uploads:

@@ -1,0 +1,17 @@
+chromadb<2,>=1.5
+fastapi<1,>=0.115
+langchain-chroma<2,>=1.0
+langchain-core<2,>=1.0
+langchain-openai<2,>=1.0
+langchain-text-splitters<2,>=1.0
+pydantic-settings<3,>=2.7
+pypdf<7,>=6
+python-docx<2,>=1.1
+python-multipart<1,>=0.0.20
+tiktoken<1,>=0.9
+uvicorn[standard]<1,>=0.34
+
+[test]
+httpx<1,>=0.28
+pytest<10,>=8
+pytest-cov<8,>=6

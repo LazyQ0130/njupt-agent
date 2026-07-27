@@ -1,0 +1,1 @@
+"""NJUPT knowledge service."""

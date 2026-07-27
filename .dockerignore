@@ -1,0 +1,15 @@
+*
+!Dockerfile
+!package.json
+!package-lock.json
+!.npmrc
+!index.html
+!tsconfig.json
+!vite.config.mjs
+!src/**
+!public/**
+!scripts/prepare-sites-build.mjs
+!worker/index.js
+!.openai/hosting.json
+!deploy/frontend-nginx.conf
+

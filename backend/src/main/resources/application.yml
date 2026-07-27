@@ -1,0 +1,112 @@
+server:
+  port: ${SERVER_PORT:8080}
+  shutdown: graceful
+
+spring:
+  application:
+    name: njupt-ai-assistant
+  datasource:
+    url: ${DATABASE_URL:${MYSQL_URL:jdbc:mysql://localhost:3306/njupt_ai_assistant?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true&useSSL=false}}
+    username: ${MYSQL_USERNAME:root}
+    password: ${MYSQL_PASSWORD:}
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    hikari:
+      maximum-pool-size: ${DB_MAX_POOL_SIZE:10}
+      minimum-idle: ${DB_MIN_IDLE:2}
+      connection-timeout: 30000
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: validate
+    properties:
+      hibernate:
+        jdbc:
+          time_zone: Asia/Shanghai
+        format_sql: false
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+      password: ${REDIS_PASSWORD:}
+      database: ${REDIS_DATABASE:0}
+      timeout: 2s
+      connect-timeout: 2s
+      repositories:
+        enabled: false
+  servlet:
+    multipart:
+      max-file-size: ${MAX_UPLOAD_SIZE:50MB}
+      max-request-size: ${MAX_REQUEST_SIZE:55MB}
+
+app:
+  storage:
+    root-path: ${FILE_UPLOAD_PATH:./data/uploads}
+    max-file-size: ${MAX_UPLOAD_SIZE:50MB}
+  cors:
+    allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:4173,http://localhost:4174}
+
+ai:
+  provider: ${AI_PROVIDER:deepseek}
+  api-key: ${AI_API_KEY:}
+  base-url: ${AI_BASE_URL:}
+  model: ${AI_MODEL:}
+  config-security:
+    master-key: ${AI_CONFIG_MASTER_KEY:}
+
+chat:
+  conversation:
+    max-history-messages: ${CHAT_MAX_HISTORY_MESSAGES:12}
+    max-history-characters: ${CHAT_MAX_HISTORY_CHARACTERS:6000}
+
+anonymous-session:
+  retention: ${ANONYMOUS_SESSION_RETENTION:90d}
+  cleanup-cron: ${ANONYMOUS_SESSION_CLEANUP_CRON:0 30 3 * * *}
+
+rate-limit:
+  enabled: ${RATE_LIMIT_ENABLED:true}
+  backend: ${RATE_LIMIT_BACKEND:REDIS}
+  redis-uri: ${RATE_LIMIT_REDIS_URI:redis://localhost:6379}
+  chat-ip-per-minute: ${CHAT_IP_RATE_LIMIT:60}
+  chat-session-per-minute: ${CHAT_SESSION_RATE_LIMIT:30}
+  admin-ip-per-minute: ${ADMIN_IP_RATE_LIMIT:20}
+  admin-login-ip-per-minute: ${ADMIN_LOGIN_IP_RATE_LIMIT:5}
+
+deepseek:
+  api-key: ${DEEPSEEK_API_KEY:}
+  base-url: ${DEEPSEEK_BASE_URL:https://api.deepseek.com}
+  model: ${DEEPSEEK_MODEL:deepseek-v4-flash}
+  connect-timeout: ${DEEPSEEK_CONNECT_TIMEOUT:3s}
+  read-timeout: ${DEEPSEEK_READ_TIMEOUT:45s}
+  max-tokens: ${DEEPSEEK_MAX_TOKENS:1200}
+
+rag:
+  service:
+    base-url: ${RAG_SERVICE_BASE_URL:http://localhost:8090}
+    connect-timeout: ${RAG_CONNECT_TIMEOUT:2s}
+    read-timeout: ${RAG_READ_TIMEOUT:10s}
+    index-read-timeout: ${RAG_INDEX_READ_TIMEOUT:60s}
+    indexing-enabled: ${RAG_INDEXING_ENABLED:true}
+  answer:
+    top-k: ${RAG_TOP_K:5}
+    candidate-k: ${RAG_CANDIDATE_K:20}
+    minimum-relevance-score: ${RAG_MIN_RELEVANCE_SCORE:0.35}
+
+crawler:
+  base-url: ${CRAWLER_SERVICE_BASE_URL:http://localhost:8091}
+  connect-timeout: ${CRAWLER_CONNECT_TIMEOUT:2s}
+  read-timeout: ${CRAWLER_READ_TIMEOUT:10s}
+  shared-token: ${CRAWLER_SHARED_TOKEN:}
+  allowed-domains: ${CRAWLER_ALLOWED_DOMAINS:www.njupt.edu.cn,jwc.njupt.edu.cn,cs.njupt.edu.cn}
+
+security:
+  jwt:
+    secret: ${ADMIN_JWT_SECRET:}
+    access-token-ttl: ${ADMIN_JWT_TTL:2h}
+  admin:
+    id: ${ADMIN_ID:1}
+    username: ${ADMIN_USERNAME:}
+    password-hash: ${ADMIN_PASSWORD_HASH:}
+
+logging:
+  level:
+    com.njupt.aiassistant: ${APP_LOG_LEVEL:INFO}

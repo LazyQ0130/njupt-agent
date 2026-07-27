@@ -1,0 +1,113 @@
+name: njupt-ai-assistant
+
+services:
+  mysql:
+    image: mysql:8.4
+    container_name: njupt-ai-mysql
+    restart: unless-stopped
+    environment:
+      MYSQL_DATABASE: njupt_ai_assistant
+      MYSQL_USER: ${MYSQL_USERNAME:-njupt}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:-njupt_dev_password}
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-njupt_root_password}
+      TZ: Asia/Shanghai
+    ports:
+      - "${MYSQL_PORT:-3307}:3306"
+    volumes:
+      - njupt_mysql_data:/var/lib/mysql
+      - ./backend/sql/schema.sql:/docker-entrypoint-initdb.d/001-schema.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h localhost -u root -p$$MYSQL_ROOT_PASSWORD --silent"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 20s
+
+  redis:
+    image: redis:7.4-alpine
+    container_name: njupt-ai-redis
+    restart: unless-stopped
+    ports:
+      - "${REDIS_PORT:-6380}:6379"
+    command: ["redis-server", "--appendonly", "yes"]
+    volumes:
+      - njupt_redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  knowledge-service:
+    build:
+      context: ./knowledge-service
+    container_name: njupt-knowledge-service
+    restart: unless-stopped
+    environment:
+      EMBEDDING__PROVIDER: ${EMBEDDING_PROVIDER:-hash}
+      EMBEDDING__API_KEY: ${EMBEDDING_API_KEY:-}
+      EMBEDDING__BASE_URL: ${EMBEDDING_BASE_URL:-}
+      EMBEDDING__MODEL: ${EMBEDDING_MODEL:-text-embedding-3-small}
+      CHROMA__PERSIST_DIRECTORY: /app/data/chroma
+      CHROMA__COLLECTION_NAME: ${CHROMA_COLLECTION_NAME:-njupt_knowledge}
+      CHUNKING__CHUNK_SIZE_TOKENS: ${CHUNK_SIZE_TOKENS:-800}
+      CHUNKING__CHUNK_OVERLAP_TOKENS: ${CHUNK_OVERLAP_TOKENS:-100}
+    ports:
+      - "${KNOWLEDGE_SERVICE_PORT:-8090}:8090"
+    volumes:
+      - njupt_chroma_data:/app/data/chroma
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "python",
+          "-c",
+          "import urllib.request; urllib.request.urlopen('http://localhost:8090/health', timeout=2)",
+        ]
+      interval: 10s
+      timeout: 3s
+      retries: 10
+      start_period: 15s
+
+  crawler-service:
+    build:
+      context: ./crawler-service
+    container_name: njupt-crawler-service
+    restart: unless-stopped
+    environment:
+      BACKEND_BASE_URL: ${CRAWLER_BACKEND_BASE_URL:-http://host.docker.internal:8080}
+      CRAWLER_SHARED_TOKEN: ${CRAWLER_SHARED_TOKEN:-njupt-crawler-local-token}
+      CRAWLER_MAX_PAGES: ${CRAWLER_MAX_PAGES:-50}
+      CRAWLER_MAX_DEPTH: ${CRAWLER_MAX_DEPTH:-2}
+      CRAWLER_REQUEST_DELAY_SECONDS: ${CRAWLER_REQUEST_DELAY_SECONDS:-1.5}
+      CRAWLER_REQUEST_TIMEOUT_SECONDS: ${CRAWLER_REQUEST_TIMEOUT_SECONDS:-15}
+      CRAWLER_MAX_RETRIES: ${CRAWLER_MAX_RETRIES:-2}
+      CRAWLER_ALLOWED_DOMAINS: ${CRAWLER_ALLOWED_DOMAINS:-www.njupt.edu.cn,jwc.njupt.edu.cn,cs.njupt.edu.cn}
+      CRAWLER_SEED_URLS: ${CRAWLER_SEED_URLS:-https://www.njupt.edu.cn/,https://jwc.njupt.edu.cn/,https://cs.njupt.edu.cn/}
+      CRAWLER_STATE_DATABASE: /app/data/crawler.db
+      CRAWLER_SCHEDULE_ENABLED: ${CRAWLER_SCHEDULE_ENABLED:-true}
+      CRAWLER_SCHEDULE_INTERVAL_HOURS: ${CRAWLER_SCHEDULE_INTERVAL_HOURS:-24}
+    ports:
+      - "${CRAWLER_SERVICE_PORT:-8091}:8091"
+    volumes:
+      - njupt_crawler_data:/app/data
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "python",
+          "-c",
+          "import urllib.request; urllib.request.urlopen('http://localhost:8091/health', timeout=2)",
+        ]
+      interval: 10s
+      timeout: 3s
+      retries: 10
+      start_period: 10s
+
+volumes:
+  njupt_mysql_data:
+  njupt_redis_data:
+  njupt_chroma_data:
+  njupt_crawler_data:

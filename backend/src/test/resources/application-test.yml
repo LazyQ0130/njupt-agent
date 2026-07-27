@@ -1,0 +1,77 @@
+spring:
+  datasource:
+    url: jdbc:h2:mem:njupt_test;MODE=MySQL;DATABASE_TO_LOWER=TRUE;NON_KEYWORDS=USER,DOCUMENT
+    username: sa
+    password:
+    driver-class-name: org.h2.Driver
+  jpa:
+    hibernate:
+      ddl-auto: create-drop
+    open-in-view: false
+  data:
+    redis:
+      host: localhost
+      port: 6379
+
+app:
+  storage:
+    root-path: ./target/test-uploads
+    max-file-size: 2MB
+  cors:
+    allowed-origins:
+      - http://localhost:4174
+
+ai:
+  provider: mock
+  api-key:
+  base-url:
+  model:
+  config-security:
+    master-key: MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWY=
+
+rag:
+  service:
+    base-url: http://localhost:8090
+    connect-timeout: 1s
+    read-timeout: 2s
+    indexing-enabled: false
+  answer:
+    top-k: 5
+    candidate-k: 20
+    minimum-relevance-score: 0.35
+
+deepseek:
+  api-key:
+  base-url: https://api.deepseek.com
+  model: deepseek-v4-flash
+  connect-timeout: 1s
+  read-timeout: 2s
+  max-tokens: 500
+
+crawler:
+  base-url: http://localhost:8091
+  connect-timeout: 1s
+  read-timeout: 2s
+  shared-token: test-crawler-token
+  allowed-domains: www.njupt.edu.cn,jwc.njupt.edu.cn,cs.njupt.edu.cn
+
+security:
+  jwt:
+    secret: test-admin-jwt-secret-must-be-at-least-32-bytes
+    access-token-ttl: 2h
+  admin:
+    id: 1
+    username: admin
+    password-hash: "{noop}test-password"
+
+anonymous-session:
+  retention: 90d
+  cleanup-cron: "0 30 3 * * *"
+
+rate-limit:
+  enabled: true
+  backend: LOCAL
+  chat-ip-per-minute: 60
+  chat-session-per-minute: 30
+  admin-ip-per-minute: 20
+  admin-login-ip-per-minute: 5

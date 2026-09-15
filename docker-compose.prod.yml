@@ -111,12 +111,12 @@ services:
       context: ./knowledge-service
     restart: unless-stopped
     environment:
-      EMBEDDING__PROVIDER: ${EMBEDDING_PROVIDER:-hash}
+      EMBEDDING__PROVIDER: ${EMBEDDING_PROVIDER:?Set EMBEDDING_PROVIDER in .env.production}
       EMBEDDING__API_KEY: ${EMBEDDING_API_KEY:-}
       EMBEDDING__BASE_URL: ${EMBEDDING_BASE_URL:-}
       EMBEDDING__MODEL: ${EMBEDDING_MODEL:-text-embedding-3-small}
       CHROMA__PERSIST_DIRECTORY: /app/data/chroma
-      CHROMA__COLLECTION_NAME: ${CHROMA_COLLECTION_NAME:-njupt_knowledge}
+      CHROMA__COLLECTION_NAME: ${CHROMA_COLLECTION_NAME:-njupt_knowledge_v2}
       CHUNKING__CHUNK_SIZE_TOKENS: ${CHUNK_SIZE_TOKENS:-800}
       CHUNKING__CHUNK_OVERLAP_TOKENS: ${CHUNK_OVERLAP_TOKENS:-100}
     expose:
@@ -152,7 +152,7 @@ services:
       CRAWLER_ALLOWED_DOMAINS: ${CRAWLER_ALLOWED_DOMAINS:-www.njupt.edu.cn,jwc.njupt.edu.cn,cs.njupt.edu.cn}
       CRAWLER_SEED_URLS: ${CRAWLER_SEED_URLS:-https://www.njupt.edu.cn/,https://jwc.njupt.edu.cn/,https://cs.njupt.edu.cn/}
       CRAWLER_STATE_DATABASE: /app/data/crawler.db
-      CRAWLER_SCHEDULE_ENABLED: ${CRAWLER_SCHEDULE_ENABLED:-true}
+      CRAWLER_SCHEDULE_ENABLED: ${CRAWLER_SCHEDULE_ENABLED:-false}
       CRAWLER_SCHEDULE_INTERVAL_HOURS: ${CRAWLER_SCHEDULE_INTERVAL_HOURS:-24}
     expose:
       - "8091"

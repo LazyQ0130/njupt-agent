@@ -225,8 +225,7 @@ public class DocumentServiceImpl implements DocumentService {
             if (document.getSourceType() != DocumentSourceType.UPLOADED_FILE) {
                 continue;
             }
-            if (document.getStatus() == DocumentStatus.PROCESSING
-                    || document.getStatus() == DocumentStatus.UPLOADING
+            if (document.getStatus() != DocumentStatus.COMPLETED
                     || !StringUtils.hasText(document.getStoragePath())) {
                 skippedCount++;
                 log.info(

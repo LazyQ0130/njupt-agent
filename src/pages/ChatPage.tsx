@@ -34,6 +34,7 @@ import {
 import { ApiError } from "../api/request";
 import { Header } from "../components/Header";
 import { QueryComposer } from "../components/QueryComposer";
+import { SiteFooter } from "../components/SiteFooter";
 import { chatCategories } from "../data";
 import type { ChatMessage } from "../types";
 
@@ -478,6 +479,7 @@ export function ChatPage() {
               {conversationId ? `当前会话 #${conversationId} · ` : ""}
               AI 回答可能存在偏差，重要事项请以学校官方通知为准。
             </p>
+            <SiteFooter compact />
           </div>
         </section>
       </main>

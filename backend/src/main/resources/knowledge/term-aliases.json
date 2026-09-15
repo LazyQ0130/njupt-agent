@@ -1,0 +1,18 @@
+{
+  "terms": [
+    {
+      "canonical": "南京邮电大学",
+      "aliases": [
+        "南邮"
+      ],
+      "category": "SCHOOL_OVERVIEW"
+    },
+    {
+      "canonical": "早锻炼",
+      "aliases": [
+        "晨跑"
+      ],
+      "category": "LIFE"
+    }
+  ]
+}

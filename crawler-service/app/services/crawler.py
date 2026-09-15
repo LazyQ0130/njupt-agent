@@ -222,9 +222,18 @@ class OfficialWebsiteCrawler:
 
             record = self._state.record_for(url)
             try:
+                conditional_record = (
+                    record
+                    if (
+                        not force_reindex
+                        and record
+                        and record.get("indexed_at")
+                    )
+                    else None
+                )
                 response = self._fetch(
                     url,
-                    record=None if force_reindex else record,
+                    record=conditional_record,
                     expected_host=expected_host,
                 )
                 if response.status_code == 304:
@@ -269,10 +278,12 @@ class OfficialWebsiteCrawler:
                         link_host,
                     )
 
-                category = self._classifier.classify(
+                classification = self._classifier.classify_page(
                     parsed.title,
                     parsed.content,
+                    url,
                 )
+                category = classification.category
                 content_hash = self._content_hash(
                     parsed.title,
                     parsed.content,
@@ -282,7 +293,22 @@ class OfficialWebsiteCrawler:
                 )
                 etag = response.headers.get("etag")
                 last_modified = response.headers.get("last-modified")
-                if since is not None:
+                if category is None:
+                    self._state.save_record(
+                        url=url,
+                        title=parsed.title,
+                        category=None,
+                        content_hash=content_hash,
+                        etag=etag,
+                        last_modified=last_modified,
+                        status="UNCLASSIFIED",
+                        indexed=False,
+                    )
+                    continue
+                if (
+                    since is not None
+                    and not classification.is_trusted_evergreen
+                ):
                     published_utc = self._as_utc(parsed.published_time)
                     if published_utc is None or published_utc < since:
                         self._state.save_record(
@@ -311,12 +337,25 @@ class OfficialWebsiteCrawler:
                         urlsplit(url).path
                     ) is not None
                 )
-                minimum_content_length = 50 if is_static_category else 120
+                minimum_content_length = (
+                    50
+                    if is_static_list
+                    or (
+                        classification.is_trusted_evergreen
+                        and is_static_category
+                    )
+                    else 120
+                )
+                rejection_status = None
                 if (
-                    category is None
-                    or (not parsed.is_detail and not is_static_list)
-                    or len(parsed.content) < minimum_content_length
+                    not parsed.is_detail
+                    and not is_static_list
+                    and not classification.is_trusted_evergreen
                 ):
+                    rejection_status = "NON_CONTENT_PAGE"
+                elif len(parsed.content) < minimum_content_length:
+                    rejection_status = "CONTENT_TOO_SHORT"
+                if rejection_status:
                     self._state.save_record(
                         url=url,
                         title=parsed.title,
@@ -324,7 +363,7 @@ class OfficialWebsiteCrawler:
                         content_hash=content_hash,
                         etag=etag,
                         last_modified=last_modified,
-                        status="DISCOVERED",
+                        status=rejection_status,
                         indexed=False,
                     )
                     continue
@@ -332,7 +371,7 @@ class OfficialWebsiteCrawler:
                 if (
                     not force_reindex
                     and record
-                    and bool(record.get("indexed"))
+                    and bool(record.get("indexed_at"))
                     and record.get("content_hash") == content_hash
                 ):
                     stats["unchanged_count"] = int(stats["unchanged_count"]) + 1

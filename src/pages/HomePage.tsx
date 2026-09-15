@@ -1,23 +1,21 @@
 import {
   ArrowRight,
-  BellRing,
   BookOpenText,
   Bot,
   BriefcaseBusiness,
   ChevronRight,
   GraduationCap,
   Library,
-  MessageSquareText,
   School,
   Sparkles,
 } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import { Header } from "../components/Header";
 import { QueryComposer } from "../components/QueryComposer";
+import { SiteFooter } from "../components/SiteFooter";
 import { homeCategories } from "../data";
 
 const categoryIcons = [GraduationCap, BookOpenText, School, BriefcaseBusiness];
-const featureIcons = [BellRing, BookOpenText, MessageSquareText];
 
 export function HomePage() {
   const navigate = useNavigate();
@@ -94,23 +92,8 @@ export function HomePage() {
               </div>
             </div>
             <p className="proof-copy">
-              汇集学校官方通知、学院培养方案与高频校园问题，让每一次回答更准确、更有依据。
+            汇集校内权威知识，让每一次回答更准确、更有依据。
             </p>
-            <div className="stats-grid">
-              {[
-                ["500+", "官方通知"],
-                ["100+", "培养方案"],
-                ["1000+", "校园问题"],
-              ].map(([value, label], index) => {
-                const Icon = featureIcons[index];
-                return (
-                  <div className="stat-card" key={label}>
-                    <span><Icon size={25} /></span>
-                    <div><strong>{value}</strong><small>{label}</small></div>
-                  </div>
-                );
-              })}
-            </div>
           </div>
           <div className="campus-illustration">
             <img
@@ -120,6 +103,7 @@ export function HomePage() {
           </div>
         </section>
       </main>
+      <SiteFooter />
     </div>
   );
 }

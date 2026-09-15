@@ -19,6 +19,7 @@ import {
 } from "../api/document";
 import { ApiError } from "../api/request";
 import { Header } from "../components/Header";
+import { SiteFooter } from "../components/SiteFooter";
 
 const categoryLabels: Record<
   NonNullable<KnowledgeDocument["category"]>,
@@ -250,6 +251,7 @@ export function KnowledgePage() {
           )}
         </section>
       </main>
+      <SiteFooter />
     </div>
   );
 }

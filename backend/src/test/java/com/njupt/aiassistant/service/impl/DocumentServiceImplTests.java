@@ -70,20 +70,39 @@ class DocumentServiceImplTests {
                 DocumentStatus.PROCESSING,
                 sourceFile
         );
-        var missing = document(
+        var uploading = document(
                 3L,
                 DocumentSourceType.UPLOADED_FILE,
+                DocumentStatus.UPLOADING,
+                sourceFile
+        );
+        var failed = document(
+                4L,
+                DocumentSourceType.UPLOADED_FILE,
                 DocumentStatus.FAILED,
+                sourceFile
+        );
+        var missing = document(
+                5L,
+                DocumentSourceType.UPLOADED_FILE,
+                DocumentStatus.COMPLETED,
                 tempDirectory.resolve("missing.pdf")
         );
         var website = document(
-                4L,
+                6L,
                 DocumentSourceType.OFFICIAL_WEBSITE,
                 DocumentStatus.COMPLETED,
                 null
         );
         when(mapper.findAllByOrderByCreatedTimeDesc())
-                .thenReturn(List.of(ready, processing, missing, website));
+                .thenReturn(List.of(
+                        ready,
+                        processing,
+                        uploading,
+                        failed,
+                        missing,
+                        website
+                ));
         when(mapper.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
 
         var result = new DocumentServiceImpl(
@@ -96,8 +115,12 @@ class DocumentServiceImplTests {
         ).reindexUploadedDocuments();
 
         assertThat(result.scheduledCount()).isEqualTo(1);
-        assertThat(result.skippedCount()).isEqualTo(2);
+        assertThat(result.skippedCount()).isEqualTo(4);
         assertThat(ready.getStatus()).isEqualTo(DocumentStatus.PROCESSING);
+        assertThat(processing.getStatus()).isEqualTo(DocumentStatus.PROCESSING);
+        assertThat(uploading.getStatus()).isEqualTo(DocumentStatus.UPLOADING);
+        assertThat(failed.getStatus()).isEqualTo(DocumentStatus.FAILED);
+        assertThat(missing.getStatus()).isEqualTo(DocumentStatus.COMPLETED);
         verify(publisher).publishEvent(any(DocumentUploadedEvent.class));
     }
 

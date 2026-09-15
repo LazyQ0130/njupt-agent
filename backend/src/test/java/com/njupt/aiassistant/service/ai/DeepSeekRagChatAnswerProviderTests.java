@@ -1,9 +1,11 @@
 package com.njupt.aiassistant.service.ai;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.njupt.aiassistant.config.RagAnswerProperties;
 import com.njupt.aiassistant.entity.DocumentCategory;
 import com.njupt.aiassistant.service.llm.LLMService;
 import com.njupt.aiassistant.service.retrieval.QuestionClassifier;
+import com.njupt.aiassistant.service.retrieval.QueryTermNormalizer;
 import com.njupt.aiassistant.service.retrieval.Retriever;
 import com.njupt.aiassistant.vo.RagSearchResultVO;
 import org.junit.jupiter.api.Test;
@@ -13,6 +15,8 @@ import java.util.List;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.ArgumentMatchers.argThat;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -28,7 +32,8 @@ class DeepSeekRagChatAnswerProviderTests {
                 retriever,
                 llmService,
                 new RagAnswerProperties(5, 20, 0.35),
-                new QuestionClassifier()
+                new QuestionClassifier(),
+                new QueryTermNormalizer(new ObjectMapper())
         );
         var results = List.of(
                 result("教务管理规定.pdf", 3, 0.91),
@@ -53,9 +58,10 @@ class DeepSeekRagChatAnswerProviderTests {
                 .isEqualTo("南京邮电大学教务处");
 
         verify(retriever).retrieve(
-                "南邮转专业需要什么条件？",
-                20,
-                DocumentCategory.ACADEMIC
+                argThat(query -> query.contains("南邮转专业需要什么条件？")
+                        && query.contains("检索规范词：南京邮电大学")),
+                eq(20),
+                eq(DocumentCategory.ACADEMIC)
         );
         verify(llmService).generateAnswer(
                 "南邮转专业需要什么条件？",
@@ -72,7 +78,8 @@ class DeepSeekRagChatAnswerProviderTests {
                 retriever,
                 llmService,
                 new RagAnswerProperties(5, 20, 0.35),
-                new QuestionClassifier()
+                new QuestionClassifier(),
+                new QueryTermNormalizer(new ObjectMapper())
         );
         when(retriever.retrieve(any(), anyInt(), any()))
                 .thenReturn(List.of(
@@ -89,6 +96,38 @@ class DeepSeekRagChatAnswerProviderTests {
     }
 
     @Test
+    void expandsCampusAliasForRetrievalButKeepsOriginalQuestionForAnswer() {
+        var retriever = mock(Retriever.class);
+        var llmService = mock(LLMService.class);
+        var provider = new DeepSeekRagChatAnswerProvider(
+                retriever,
+                llmService,
+                new RagAnswerProperties(5, 20, 0.35),
+                new QuestionClassifier(),
+                new QueryTermNormalizer(new ObjectMapper())
+        );
+        var source = result("早锻炼安排.html", 1, 0.91);
+        when(retriever.retrieve(any(), anyInt(), any())).thenReturn(List.of(source));
+        when(llmService.generateAnswer(any(), any(), any()))
+                .thenReturn("早锻炼安排以学校当年通知为准。");
+
+        var answer = provider.answer("讲一下晨跑");
+
+        assertThat(answer.answer()).isEqualTo("早锻炼安排以学校当年通知为准。");
+        verify(retriever).retrieve(
+                argThat(query -> query.contains("讲一下晨跑")
+                        && query.contains("检索规范词：早锻炼")),
+                eq(20),
+                eq(DocumentCategory.LIFE)
+        );
+        verify(llmService).generateAnswer(
+                eq("讲一下晨跑"),
+                eq(List.of(source)),
+                eq(List.of())
+        );
+    }
+
+    @Test
     void filtersCandidatesBeforeTakingContextAndKeepsAutomationPageTwo() {
         var retriever = mock(Retriever.class);
         var llmService = mock(LLMService.class);
@@ -96,7 +135,8 @@ class DeepSeekRagChatAnswerProviderTests {
                 retriever,
                 llmService,
                 new RagAnswerProperties(5, 20, 0.35),
-                new QuestionClassifier()
+                new QuestionClassifier(),
+                new QueryTermNormalizer(new ObjectMapper())
         );
         var automation = new RagSearchResultVO(
                 "自动化专业接收转专业学生的条件与考核要求",
@@ -131,9 +171,9 @@ class DeepSeekRagChatAnswerProviderTests {
                     assertThat(source.page()).isEqualTo(2);
                 });
         verify(retriever).retrieve(
-                "自动化专业转专业条件",
-                20,
-                DocumentCategory.ACADEMIC
+                argThat(query -> query.contains("转专业目标：自动化")),
+                eq(20),
+                eq(DocumentCategory.ACADEMIC)
         );
     }
 
@@ -145,7 +185,8 @@ class DeepSeekRagChatAnswerProviderTests {
                 retriever,
                 llmService,
                 new RagAnswerProperties(5, 20, 0.35),
-                new QuestionClassifier()
+                new QuestionClassifier(),
+                new QueryTermNormalizer(new ObjectMapper())
         );
         var sourceUrl = "https://www.njupt.edu.cn/17223/list.htm";
         var result = new RagSearchResultVO(
@@ -173,9 +214,10 @@ class DeepSeekRagChatAnswerProviderTests {
                             .isEqualTo("SCHOOL_OVERVIEW");
                 });
         verify(retriever).retrieve(
-                "南邮校训是什么？",
-                20,
-                DocumentCategory.SCHOOL_OVERVIEW
+                argThat(query -> query.contains("南邮校训是什么？")
+                        && query.contains("检索规范词：南京邮电大学")),
+                eq(20),
+                eq(DocumentCategory.SCHOOL_OVERVIEW)
         );
     }
 

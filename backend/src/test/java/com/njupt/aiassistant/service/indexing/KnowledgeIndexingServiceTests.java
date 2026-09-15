@@ -9,6 +9,9 @@ import com.njupt.aiassistant.exception.BusinessException;
 import com.njupt.aiassistant.mapper.DocumentMapper;
 import com.njupt.aiassistant.vo.RagIndexResponseVO;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.NullAndEmptySource;
+import org.junit.jupiter.params.provider.ValueSource;
 
 import java.nio.file.Path;
 import java.time.LocalDateTime;
@@ -56,6 +59,32 @@ class KnowledgeIndexingServiceTests {
         new KnowledgeIndexingService(ragClient, mapper).index(event("DOCX"));
 
         assertThat(document.getStatus()).isEqualTo(DocumentStatus.FAILED);
+        verify(mapper).save(document);
+    }
+
+    @ParameterizedTest
+    @NullAndEmptySource
+    @ValueSource(strings = "  ")
+    void clearsExistingCategoryWhenIndexingDoesNotClassifyDocument(
+            String indexedCategory
+    ) {
+        var ragClient = mock(RagClient.class);
+        var mapper = mock(DocumentMapper.class);
+        var document = document(1L);
+        document.setCategory(DocumentCategory.ACADEMIC);
+        when(mapper.findById(1L)).thenReturn(Optional.of(document));
+        when(ragClient.index(any(), any(), any(), any()))
+                .thenReturn(new RagIndexResponseVO(
+                        "vector-doc-1",
+                        "unclassified.pdf",
+                        3,
+                        indexedCategory
+                ));
+
+        new KnowledgeIndexingService(ragClient, mapper).index(event("PDF"));
+
+        assertThat(document.getStatus()).isEqualTo(DocumentStatus.COMPLETED);
+        assertThat(document.getCategory()).isNull();
         verify(mapper).save(document);
     }
 

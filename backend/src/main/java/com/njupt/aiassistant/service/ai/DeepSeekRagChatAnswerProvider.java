@@ -3,7 +3,9 @@ package com.njupt.aiassistant.service.ai;
 import com.njupt.aiassistant.config.RagAnswerProperties;
 import com.njupt.aiassistant.service.llm.LLMService;
 import com.njupt.aiassistant.service.retrieval.QuestionClassifier;
+import com.njupt.aiassistant.service.retrieval.QueryTermNormalizer;
 import com.njupt.aiassistant.service.retrieval.Retriever;
+import com.njupt.aiassistant.service.retrieval.TransferQueryIntent;
 import com.njupt.aiassistant.vo.RagSearchResultVO;
 import org.springframework.stereotype.Component;
 
@@ -20,17 +22,20 @@ public class DeepSeekRagChatAnswerProvider implements ChatAnswerProvider {
     private final LLMService llmService;
     private final RagAnswerProperties properties;
     private final QuestionClassifier questionClassifier;
+    private final QueryTermNormalizer queryTermNormalizer;
 
     public DeepSeekRagChatAnswerProvider(
             Retriever retriever,
             LLMService llmService,
             RagAnswerProperties properties,
-            QuestionClassifier questionClassifier
+            QuestionClassifier questionClassifier,
+            QueryTermNormalizer queryTermNormalizer
     ) {
         this.retriever = retriever;
         this.llmService = llmService;
         this.properties = properties;
         this.questionClassifier = questionClassifier;
+        this.queryTermNormalizer = queryTermNormalizer;
     }
 
     @Override
@@ -49,9 +54,15 @@ public class DeepSeekRagChatAnswerProvider implements ChatAnswerProvider {
             List<DialogueMessage> history
     ) {
         var retrievalQuestion = contextualize(question, history);
-        var category = questionClassifier.classify(retrievalQuestion);
+        var normalizedQuery = queryTermNormalizer.normalize(retrievalQuestion);
+        var normalizedRetrievalQuestion = normalizedQuery.retrievalQuestion();
+        var transferIntent = TransferQueryIntent.analyze(normalizedRetrievalQuestion);
+        var plannedRetrievalQuestion = transferIntent
+                .map(intent -> intent.retrievalQuestion(normalizedRetrievalQuestion))
+                .orElse(normalizedRetrievalQuestion);
+        var category = questionClassifier.classify(plannedRetrievalQuestion);
         var retrieved = retriever.retrieve(
-                retrievalQuestion,
+                plannedRetrievalQuestion,
                 properties.candidateK(),
                 category
         );

@@ -62,15 +62,20 @@ const statusText: Record<KnowledgeDocument["status"], string> = {
 };
 
 const categoryOptions: Array<[DocumentCategory, string]> = [
-  ["NEW_STUDENT", "新生入学"],
-  ["ACADEMIC", "教务学籍"],
+  ["NEW_STUDENT", "新生指南"],
+  ["ACADEMIC", "教务规则"],
   ["LIFE", "校园生活"],
-  ["MAJOR", "学院专业"],
-  ["CAREER", "就业升学"],
+  ["MAJOR", "专业培养"],
+  ["CAREER", "就业发展"],
   ["SCHOOL_OVERVIEW", "学校概况"],
   ["ORGANIZATION", "组织机构"],
-  ["RESEARCH", "科研学科"],
+  ["RESEARCH", "科研学术"],
 ];
+
+const categoryLabels = Object.fromEntries(categoryOptions) as Record<
+  DocumentCategory,
+  string
+>;
 
 export function AdminPage() {
   const navigate = useNavigate();
@@ -167,9 +172,15 @@ export function AdminPage() {
     void addFiles(event.dataTransfer.files);
   };
 
-  const filteredItems = items.filter((item) =>
-    `${item.filename}${item.source}`.toLowerCase().includes(query.toLowerCase()),
-  );
+  const normalizedQuery = query.trim().toLowerCase();
+  const filteredItems = items.filter((item) => {
+    const category = item.category
+      ? `${item.category}${categoryLabels[item.category]}`
+      : "未分类";
+    return `${item.filename}${item.source}${category}`
+      .toLowerCase()
+      .includes(normalizedQuery);
+  });
   const completedCount = items.filter((item) => item.status === "COMPLETED").length;
   const processingCount = items.filter((item) =>
     item.status === "PROCESSING" || item.status === "UPLOADING",
@@ -483,6 +494,7 @@ export function AdminPage() {
                   <tr>
                     <th>文件名称</th>
                     <th>来源部门</th>
+                    <th>知识分类</th>
                     <th>上传时间</th>
                     <th>文件大小</th>
                     <th>解析状态</th>
@@ -491,18 +503,18 @@ export function AdminPage() {
                 </thead>
                 <tbody>
                   {isLoading && (
-                    <tr><td className="table-message" colSpan={6}>正在加载知识库文件…</td></tr>
+                    <tr><td className="table-message" colSpan={7}>正在加载知识库文件…</td></tr>
                   )}
                   {!isLoading && loadError && (
                     <tr>
-                      <td className="table-message" colSpan={6}>
+                      <td className="table-message" colSpan={7}>
                         <AlertCircle size={16} /> {loadError}
                         <button type="button" onClick={() => void loadDocuments()}>重新加载</button>
                       </td>
                     </tr>
                   )}
                   {!isLoading && !loadError && filteredItems.length === 0 && (
-                    <tr><td className="table-message" colSpan={6}>暂无符合条件的知识库文件</td></tr>
+                    <tr><td className="table-message" colSpan={7}>暂无符合条件的知识库文件</td></tr>
                   )}
                   {!isLoading && !loadError && filteredItems.map((document) => (
                     <tr key={document.id}>
@@ -511,6 +523,11 @@ export function AdminPage() {
                         <div><strong>{document.filename}</strong><small>{document.type.toUpperCase()}</small></div>
                       </td>
                       <td>{document.source}</td>
+                      <td>
+                        <span className={`admin-category ${document.category ? "" : "uncategorized"}`}>
+                          {document.category ? categoryLabels[document.category] : "未分类"}
+                        </span>
+                      </td>
                       <td>{document.createdTime.slice(0, 10)}</td>
                       <td>{formatFileSize(document.fileSize)}</td>
                       <td><span className={`status ${statusClass[document.status]}`}><i /> {statusText[document.status]}</span></td>

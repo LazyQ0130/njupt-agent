@@ -56,8 +56,8 @@ class EvaluationServiceIntegrationTests {
 
         var report = evaluationService.run();
 
-        assertThat(report.total()).isEqualTo(109);
-        assertThat(resultMapper.count()).isEqualTo(109);
+        assertThat(report.total()).isEqualTo(111);
+        assertThat(resultMapper.count()).isEqualTo(111);
         assertThat(report.runId()).isNotBlank();
         assertThat(report.sourceCoverage()).isEqualTo(100.0);
         assertThat(report.nonEmptyRate()).isEqualTo(100.0);
@@ -80,7 +80,7 @@ class EvaluationServiceIntegrationTests {
         assertThat(distribution).containsExactlyInAnyOrderEntriesOf(Map.of(
                 "NEW_STUDENT", 25L,
                 "ACADEMIC", 25L,
-                "LIFE", 20L,
+                "LIFE", 22L,
                 "MAJOR", 20L,
                 "CAREER", 10L,
                 "SCHOOL_OVERVIEW", 3L,

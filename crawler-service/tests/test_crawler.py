@@ -66,6 +66,7 @@ def crawl_single_page(
     path: str,
     html: str,
     since: datetime | None,
+    host: str = "jwc.njupt.edu.cn",
 ) -> tuple[CrawlerStateStore, CollectingBackend]:
     def handler(request: httpx.Request) -> httpx.Response:
         if request.url.path == "/robots.txt":
@@ -92,7 +93,7 @@ def crawl_single_page(
         state_store=store,
         backend_client=backend,  # type: ignore[arg-type]
     )
-    url = f"https://jwc.njupt.edu.cn{path}"
+    url = f"https://{host}{path}"
     run_id = store.start_run(False)
     crawler.execute(
         run_id,
@@ -100,7 +101,7 @@ def crawl_single_page(
         seed_urls=(url,),
         since=since,
         max_pages=1,
-        allowed_hosts=frozenset({"jwc.njupt.edu.cn"}),
+        allowed_hosts=frozenset({host}),
     )
     client.close()
     return store, backend
@@ -412,7 +413,7 @@ def test_all_scope_indexes_undated_static_list_with_50_character_floor(
     ] == "CREATED"
 
 
-def test_recent_scope_still_skips_undated_static_list(tmp_path) -> None:
+def test_recent_scope_indexes_trusted_undated_static_list(tmp_path) -> None:
     path = "/17352/list.htm"
     html = """
     <html><head><title>党政群部门</title></head><body><main>
@@ -429,10 +430,11 @@ def test_recent_scope_still_skips_undated_static_list(tmp_path) -> None:
         since=datetime(2024, 1, 1, tzinfo=UTC),
     )
 
-    assert backend.documents == []
+    assert len(backend.documents) == 1
+    assert backend.documents[0].category == DocumentCategory.ORGANIZATION
     assert store.record_for(f"https://jwc.njupt.edu.cn{path}")[
         "last_status"
-    ] == "DATE_UNKNOWN"
+    ] == "CREATED"
 
 
 def test_static_list_below_50_characters_is_discovered_only(tmp_path) -> None:
@@ -453,7 +455,7 @@ def test_static_list_below_50_characters_is_discovered_only(tmp_path) -> None:
     assert backend.documents == []
     assert store.record_for(f"https://jwc.njupt.edu.cn{path}")[
         "last_status"
-    ] == "DISCOVERED"
+    ] == "CONTENT_TOO_SHORT"
 
 
 def test_ordinary_list_is_not_admitted_by_path_alone(tmp_path) -> None:
@@ -477,7 +479,145 @@ def test_ordinary_list_is_not_admitted_by_path_alone(tmp_path) -> None:
     assert backend.documents == []
     assert store.record_for(f"https://jwc.njupt.edu.cn{path}")[
         "last_status"
-    ] == "DISCOVERED"
+    ] == "UNCLASSIFIED"
+
+
+def test_recent_scope_indexes_undated_library_profile(tmp_path) -> None:
+    path = "/1379/list.htm"
+    html = """
+    <html><head><title>本馆简介</title></head><body><main>
+      <h1>本馆简介</h1>
+      <p>南京邮电大学图书馆由仙林校区图书馆、三牌楼校区图书馆和锁金村校区图书馆组成。</p>
+      <p>图书馆拥有丰富的纸质和电子馆藏，提供阅览座位、自助借还、文献检索和学习空间服务。</p>
+      <p>各校区图书馆持续面向师生开放，具体开放时间、借阅规则和电子资源使用方式以图书馆公告为准。</p>
+    </main></body></html>
+    """
+
+    store, backend = crawl_single_page(
+        tmp_path / "library-profile.db",
+        path=path,
+        html=html,
+        since=datetime(2024, 1, 1, tzinfo=UTC),
+        host="lib.njupt.edu.cn",
+    )
+
+    assert len(backend.documents) == 1
+    assert backend.documents[0].category == DocumentCategory.LIFE
+    assert backend.documents[0].published_time is None
+    assert store.record_for(f"https://lib.njupt.edu.cn{path}")[
+        "last_status"
+    ] == "CREATED"
+
+
+def test_undated_news_is_not_admitted_as_evergreen(tmp_path) -> None:
+    path = "/news/list.htm"
+    html = """
+    <html><head><title>图书馆成功举办阅读推广活动</title></head>
+    <body><article>
+      <h1>图书馆成功举办阅读推广活动</h1>
+      <p>图书馆组织师生开展阅读交流，活动现场进行了作品展示、经验分享和互动讨论。</p>
+      <p>本次活动丰富了校园文化生活，参与师生交流了阅读心得，并共同参观了馆藏展示空间。</p>
+      <p>图书馆将继续举办相关文化活动，为师生提供更多交流机会和阅读推广服务。</p>
+    </article></body></html>
+    """
+
+    store, backend = crawl_single_page(
+        tmp_path / "undated-library-news.db",
+        path=path,
+        html=html,
+        since=datetime(2024, 1, 1, tzinfo=UTC),
+        host="lib.njupt.edu.cn",
+    )
+
+    assert backend.documents == []
+    assert store.record_for(f"https://lib.njupt.edu.cn{path}")[
+        "last_status"
+    ] == "UNCLASSIFIED"
+
+
+def test_unindexed_record_is_refetched_after_classification_rules_change(
+    tmp_path,
+) -> None:
+    path = "/1379/list.htm"
+    page_fetches = 0
+    original_html = """
+    <html><head><title>普通页面</title></head><body><main>
+      <h1>普通页面</h1>
+      <p>这里暂时只有一般介绍内容，尚未包含可识别的学生服务主题或明确的知识分类信息。</p>
+      <p>页面提供公开信息说明，但当前标题和正文不足以判断其属于哪一种校园知识类别。</p>
+      <p>后续页面更新后可能补充更明确的服务对象、业务范围和负责单位等内容。</p>
+    </main></body></html>
+    """
+    updated_html = """
+    <html><head><title>本馆简介</title></head><body><main>
+      <h1>本馆简介</h1>
+      <p>南京邮电大学图书馆由多个校区图书馆组成，为全校师生提供文献、阅览和学习空间。</p>
+      <p>图书馆拥有纸质及电子馆藏，并提供自助借还、文献检索、电子资源和咨询服务。</p>
+      <p>师生可根据图书馆开放安排使用馆舍，具体借阅规则和开放时间以正式说明为准。</p>
+      <p>馆内还设有研读空间、信息检索终端和自助文印设备，以满足读者不同形式的学习需求。</p>
+      <p>图书馆持续完善资源保障体系，并通过咨询、培训和阅读推广支持学校教学与科研工作。</p>
+    </main></body></html>
+    """
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        nonlocal page_fetches
+        if request.url.path == "/robots.txt":
+            return httpx.Response(404, request=request)
+        if request.url.path != path:
+            return httpx.Response(404, request=request)
+        page_fetches += 1
+        if request.headers.get("If-None-Match"):
+            return httpx.Response(304, request=request)
+        return httpx.Response(
+            200,
+            text=original_html if page_fetches == 1 else updated_html,
+            headers={
+                "Content-Type": "text/html; charset=utf-8",
+                "ETag": '"profile-v1"',
+            },
+            request=request,
+        )
+
+    client = httpx.Client(transport=httpx.MockTransport(handler))
+    settings = build_settings(tmp_path / "reclassify.db", max_pages=1)
+    store = CrawlerStateStore(settings.crawler_state_database)
+    backend = CollectingBackend()
+    crawler = OfficialWebsiteCrawler(
+        settings=settings,
+        client=client,
+        parser=WebPageParser(),
+        classifier=RuleBasedClassifier(),
+        robots=RobotsPolicy(client, settings.crawler_user_agent),
+        state_store=store,
+        backend_client=backend,  # type: ignore[arg-type]
+    )
+    url = f"https://lib.njupt.edu.cn{path}"
+
+    first_run = store.start_run(False)
+    crawler.execute(
+        first_run,
+        force_reindex=False,
+        seed_urls=(url,),
+        since=datetime(2024, 1, 1, tzinfo=UTC),
+        max_pages=1,
+        allowed_hosts=frozenset({"lib.njupt.edu.cn"}),
+    )
+    assert store.record_for(url)["last_status"] == "UNCLASSIFIED"
+
+    second_run = store.start_run(False)
+    crawler.execute(
+        second_run,
+        force_reindex=False,
+        seed_urls=(url,),
+        since=datetime(2024, 1, 1, tzinfo=UTC),
+        max_pages=1,
+        allowed_hosts=frozenset({"lib.njupt.edu.cn"}),
+    )
+
+    assert page_fetches == 2
+    assert len(backend.documents) == 1
+    assert backend.documents[0].category == DocumentCategory.LIFE
+    client.close()
 
 
 def test_parser_separates_content_links_from_navigation_and_footer() -> None:

@@ -41,6 +41,8 @@
   {"question":"校园网无法连接应该联系哪里？","category":"LIFE","expected_source":"校园网","expected_keywords":["校园网","故障","联系"]},
   {"question":"在校生如何预约校医院？","category":"LIFE","expected_source":"医疗","expected_keywords":["校医院","预约","就诊"]},
   {"question":"学生证丢失后如何补办？","category":"LIFE","expected_source":"校园服务","expected_keywords":["学生证","补办","申请"]},
+  {"question":"讲一下早锻炼","category":"LIFE","expected_source":"早锻炼","expected_keywords":["早锻炼","时间","考勤"]},
+  {"question":"讲一下晨跑","category":"LIFE","expected_source":"早锻炼","expected_keywords":["早锻炼","时间","考勤"]},
 
   {"question":"南邮计算机科学与技术专业主要学什么？","category":"MAJOR","expected_source":"培养方案","expected_keywords":["计算机","课程","培养"]},
   {"question":"计算机专业大一主要课程有哪些？","category":"MAJOR","expected_source":"培养方案","expected_keywords":["程序设计","数学","课程"]},

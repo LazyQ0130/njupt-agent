@@ -59,15 +59,18 @@ public class KnowledgeIndexingService {
                     event.source(),
                     event.uploadTime()
             );
-            if (result.category() != null && !result.category().isBlank()) {
+            var indexedCategory = result.category();
+            if (indexedCategory == null || indexedCategory.isBlank()) {
+                document.setCategory(null);
+            } else {
                 try {
                     document.setCategory(
-                            DocumentCategory.valueOf(result.category())
+                            DocumentCategory.valueOf(indexedCategory.trim())
                     );
                 } catch (IllegalArgumentException exception) {
                     log.warn(
                             "Ignoring unknown indexed category={} for document id={}",
-                            result.category(),
+                            indexedCategory,
                             event.documentId()
                     );
                 }

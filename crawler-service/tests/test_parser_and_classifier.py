@@ -1,5 +1,5 @@
 from app.models.schemas import DocumentCategory
-from app.services.classifier import RuleBasedClassifier
+from app.services.classifier import PageType, RuleBasedClassifier
 from app.services.page_parser import WebPageParser
 
 
@@ -105,6 +105,52 @@ def test_keeps_actionable_notice_even_when_it_announces_an_event() -> None:
         "关于举办本科生创新竞赛的报名通知",
         "学生须在截止时间前提交报名材料和申请表。",
     ) == DocumentCategory.ACADEMIC
+
+
+def test_classifies_contextual_evergreen_profiles() -> None:
+    classifier = RuleBasedClassifier()
+
+    library = classifier.classify_page(
+        "本馆简介",
+        "南京邮电大学图书馆拥有丰富馆藏并提供借阅、阅览和电子资源服务。",
+        "https://lib.njupt.edu.cn/1379/list.htm",
+    )
+    college = classifier.classify_page(
+        "学院简介",
+        "学院设有多个本科专业，形成本科生、硕士和博士人才培养体系。",
+        "https://example.njupt.edu.cn/xyjj/list.htm",
+    )
+    organization = classifier.classify_page(
+        "部门职责",
+        "本部门负责学校行政管理、协调服务和相关单位的工作联系。",
+        "https://example.njupt.edu.cn/zzjg/list.htm",
+    )
+    research = classifier.classify_page(
+        "重点实验室简介",
+        "实验室围绕信息通信开展科学研究、平台建设和人才培养。",
+        "https://example.njupt.edu.cn/lab/list.htm",
+    )
+
+    assert library.category == DocumentCategory.LIFE
+    assert college.category == DocumentCategory.MAJOR
+    assert organization.category == DocumentCategory.ORGANIZATION
+    assert research.category == DocumentCategory.RESEARCH
+    assert all(
+        item.page_type == PageType.EVERGREEN_STATIC
+        and item.is_trusted_evergreen
+        for item in (library, college, organization, research)
+    )
+
+
+def test_ambiguous_profile_title_requires_matching_context() -> None:
+    result = RuleBasedClassifier().classify_page(
+        "本馆简介",
+        "这里介绍某个展示页面的视觉风格、建设过程和页面导航信息。",
+        "https://example.njupt.edu.cn/1379/list.htm",
+    )
+
+    assert result.category is None
+    assert result.is_trusted_evergreen is False
 
 
 def test_normalizes_links_and_drops_binary_attachments() -> None:

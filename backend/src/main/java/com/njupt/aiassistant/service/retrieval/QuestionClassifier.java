@@ -35,11 +35,11 @@ public class QuestionClassifier {
         ));
         RULES.put(DocumentCategory.ACADEMIC, List.of(
                 "选课", "考试", "补考", "重修", "转专业", "学分",
-                "绩点", "校历", "教务", "课程", "成绩"
+                "绩点", "校历", "教务", "课程", "成绩", "竞赛", "创新创业"
         ));
         RULES.put(DocumentCategory.LIFE, List.of(
                 "图书馆", "食堂", "宿舍", "快递", "校园网",
-                "后勤", "医疗", "保卫", "生活"
+                "后勤", "医疗", "保卫", "生活", "早锻炼", "晨跑"
         ));
         RULES.put(DocumentCategory.CAREER, List.of(
                 "就业", "招聘", "考研", "升学", "推免", "职业"
@@ -53,6 +53,9 @@ public class QuestionClassifier {
     public DocumentCategory classify(String question) {
         if (question == null || question.isBlank()) {
             return null;
+        }
+        if (TransferQueryIntent.analyze(question).isPresent()) {
+            return DocumentCategory.ACADEMIC;
         }
         for (var entry : RULES.entrySet()) {
             if (entry.getValue().stream().anyMatch(question::contains)) {

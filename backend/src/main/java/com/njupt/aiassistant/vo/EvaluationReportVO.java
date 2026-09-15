@@ -14,6 +14,8 @@ public record EvaluationReportVO(
         double nonEmptyRate,
         int humanReviewedCount,
         Double humanAccuracyRate,
+        boolean gatePassed,
+        List<String> gateFailures,
         Map<String, Double> categoryScores,
         LocalDateTime executedAt,
         List<EvaluationItemVO> results

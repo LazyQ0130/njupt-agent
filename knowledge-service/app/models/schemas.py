@@ -26,6 +26,7 @@ class RagSearchResult(BaseModel):
     page: int = Field(ge=1)
     source: str
     source_url: str | None = None
+    source_type: str | None = None
     category: DocumentCategory | None = None
     score: float = Field(ge=0.0, le=1.0)
 

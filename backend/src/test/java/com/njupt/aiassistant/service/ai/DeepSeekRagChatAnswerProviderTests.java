@@ -222,6 +222,38 @@ class DeepSeekRagChatAnswerProviderTests {
     }
 
     @Test
+    void preservesSourceTypeFromRetrieverMetadata() {
+        var retriever = mock(Retriever.class);
+        var llmService = mock(LLMService.class);
+        var provider = new DeepSeekRagChatAnswerProvider(
+                retriever,
+                llmService,
+                new RagAnswerProperties(5, 20, 0.35),
+                new QuestionClassifier(),
+                new QueryTermNormalizer(new ObjectMapper())
+        );
+        var curated = new RagSearchResultVO(
+                "学校概况资料",
+                "学校概况.pdf",
+                1,
+                "南邮官方资料",
+                null,
+                "CURATED_OFFICIAL",
+                "SCHOOL_OVERVIEW",
+                0.91
+        );
+        when(retriever.retrieve(any(), anyInt(), any())).thenReturn(List.of(curated));
+        when(llmService.generateAnswer(any(), any(), any()))
+                .thenReturn("学校概况见官方资料。");
+
+        var answer = provider.answer("南邮学校概况是什么？");
+
+        assertThat(answer.sources()).singleElement()
+                .extracting(ChatSource::type)
+                .isEqualTo("CURATED_OFFICIAL");
+    }
+
+    @Test
     void calculatesConfidenceOnlyFromRetrievalScore() {
         assertThat(DeepSeekRagChatAnswerProvider.calculateConfidence(0.92))
                 .isEqualTo(95);

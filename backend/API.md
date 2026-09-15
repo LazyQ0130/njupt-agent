@@ -40,7 +40,7 @@ Base URL：`http://localhost:8080`
     "sources": [
       {
         "title": "本科生转专业管理办法.pdf",
-        "type": "official",
+        "type": "OFFICIAL_WEBSITE",
         "page": 3,
         "score": 0.91,
         "source": "南京邮电大学教务处",
@@ -174,6 +174,7 @@ Spring Boot 通过 `RagClient` 调用 Knowledge Service 的 `/rag/search`。该�
       "page": 3,
       "source": "教务处",
       "source_url": "https://jwc.njupt.edu.cn/example/page.htm",
+      "source_type": "OFFICIAL_WEBSITE",
       "category": "ACADEMIC",
       "score": 0.93
     }
@@ -286,7 +287,8 @@ Spring 与 Crawler Service 都会校验 HTTPS、`*.njupt.edu.cn` 官方子域名
 
 `GET /api/admin/quality/stats`
 
-返回总回答数、反馈数、好评/差评数、好评率与前 10 个高频问题。
+返回总回答数、去重匿名用户数、反馈数、好评/差评数、好评率、低置信度回答数、
+低置信度差评数、前 10 个高频问题和前 10 个低质量问题簇。
 
 ## 13. RAG 自动评测
 
@@ -300,8 +302,10 @@ Spring 与 Crawler Service 都会校验 HTTPS、`*.njupt.edu.cn` 官方子域名
 - 预期答案关键词命中：25 分
 - 非空且非兜底回答：10 分
 
-返回总平均分、来源覆盖率、来源匹配率、关键词命中率、非空率、分类平均分和
-逐题明细。模型调用次数与问题集当前总数一致，接口仅允许管理员访问。
+返回总平均分、来源覆盖率、来源匹配率、关键词命中率、非空率、人工准确率、
+评测门禁结果、分类平均分和逐题明细。模型调用次数与问题集当前总数一致，接口
+仅允许管理员访问。门禁要求非空率至少 98%、来源覆盖率至少 95%、来源匹配率
+至少 85%、人工准确率至少 90%；未完成人工复核时门禁保持未通过。
 
 ## 14. 分类优先检索
 
@@ -359,7 +363,7 @@ Spring 在检索前按关键词判断 `NEW_STUDENT`、`ACADEMIC`、`LIFE`、`MAJ
 
 | 方法 | 路径 | 说明 |
 | --- | --- | --- |
-| `GET` | `/api/admin/evaluation/{runId}` | 获取某个 100 题批次报告 |
+| `GET` | `/api/admin/evaluation/{runId}` | 获取某个评测批次报告 |
 | `PUT` | `/api/admin/evaluation/results/{id}/review` | 标记人工准确性 |
 
 复核请求：
@@ -368,8 +372,8 @@ Spring 在检索前按关键词判断 `NEW_STUDENT`、`ACADEMIC`、`LIFE`、`MAJ
 {"accurate":true,"note":"政策条件和引用来源一致"}
 ```
 
-报告额外返回 `humanReviewedCount` 和 `humanAccuracyRate`；尚未人工复核时准确率
-为 `null`，不会用自动规则分数冒充人工准确率。
+报告额外返回 `humanReviewedCount`、`humanAccuracyRate`、`gatePassed` 和
+`gateFailures`；尚未人工复核时准确率为 `null`，不会用自动规则分数冒充人工准确率。
 
 ## Phase 7 错误码
 
@@ -390,7 +394,8 @@ Spring 在检索前按关键词判断 `NEW_STUDENT`、`ACADEMIC`、`LIFE`、`MAJ
 - `PATCH /api/admin/ai/config/status`：请求 `{"enabled":true|false}`。
 - `DELETE /api/admin/ai/config`：清除数据库密钥并写入显式禁用状态，不回退环境变量。
 - `GET /api/admin/ai/overview?period=today|7d|30d|all&refreshBalance=false`：
-  返回 DeepSeek 实时余额与本应用 Token 统计。余额同步 60 秒内复用缓存。
+  返回 DeepSeek 实时余额、本应用 Token 统计和按 `AI_INPUT_COST_PER_MILLION_USD` /
+  `AI_OUTPUT_COST_PER_MILLION_USD` 配置计算的估算费用。余额同步 60 秒内复用缓存。
 
 后台只允许选择 `deepseek-v4-flash` 和 `deepseek-v4-pro`，Base URL 不通过接口开放。
 每次替换、启停和清除都会写入 `operation_log`，审计内容不包含密钥。

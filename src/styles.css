@@ -3707,6 +3707,58 @@ td:last-child button:hover {
   line-height: 1.6;
 }
 
+.evaluation-gate {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin: 16px 0;
+  padding: 10px 12px;
+  border-left: 3px solid #d39435;
+  background: #fff8ec;
+  color: #7e5718;
+}
+
+.evaluation-gate.passed {
+  border-left-color: #2f9a62;
+  background: #effaf3;
+  color: #216b43;
+}
+
+.evaluation-gate span {
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.low-quality-panel {
+  margin-top: 18px;
+}
+
+.low-quality-list {
+  display: grid;
+  gap: 1px;
+  overflow: hidden;
+  border: 1px solid #e4ebf2;
+  border-radius: 6px;
+  background: #e4ebf2;
+}
+
+.low-quality-list > div {
+  display: grid;
+  gap: 4px;
+  padding: 12px 14px;
+  background: #fff;
+}
+
+.low-quality-list strong {
+  color: #25394d;
+  font-size: 14px;
+}
+
+.low-quality-list span {
+  color: #74879a;
+  font-size: 12px;
+}
+
 .quality-score {
   margin-top: 18px;
   display: grid;

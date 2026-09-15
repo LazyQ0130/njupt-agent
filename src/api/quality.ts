@@ -5,13 +5,24 @@ export interface FrequentQuestion {
   count: number;
 }
 
+export interface LowQualityQuestion {
+  question: string;
+  occurrences: number;
+  incorrectCount: number;
+  averageConfidence: number;
+}
+
 export interface QualityStats {
   totalAnswers: number;
+  uniqueAnonymousUsers: number;
   feedbackCount: number;
   helpfulCount: number;
   incorrectCount: number;
   helpfulRate: number;
+  lowConfidenceAnswerCount: number;
+  lowConfidenceIncorrectCount: number;
   highFrequencyQuestions: FrequentQuestion[];
+  lowQualityQuestions: LowQualityQuestion[];
 }
 
 export interface EvaluationItem {
@@ -38,6 +49,8 @@ export interface EvaluationReport {
   nonEmptyRate: number;
   humanReviewedCount: number;
   humanAccuracyRate: number | null;
+  gatePassed: boolean;
+  gateFailures: string[];
   categoryScores: Record<string, number>;
   executedAt: string;
   results: EvaluationItem[];

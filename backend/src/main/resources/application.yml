@@ -50,6 +50,9 @@ ai:
   api-key: ${AI_API_KEY:}
   base-url: ${AI_BASE_URL:}
   model: ${AI_MODEL:}
+  usage:
+    input-cost-per-million-usd: ${AI_INPUT_COST_PER_MILLION_USD:0}
+    output-cost-per-million-usd: ${AI_OUTPUT_COST_PER_MILLION_USD:0}
   config-security:
     master-key: ${AI_CONFIG_MASTER_KEY:}
 

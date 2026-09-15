@@ -6,6 +6,7 @@ import com.njupt.aiassistant.vo.AiUsageSummaryVO;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.beans.factory.annotation.Value;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -19,9 +20,17 @@ public class AiUsageService {
     private static final Set<String> PERIODS = Set.of("today", "7d", "30d", "all");
 
     private final AiUsageRecordMapper mapper;
+    private final double inputCostPerMillionUsd;
+    private final double outputCostPerMillionUsd;
 
-    public AiUsageService(AiUsageRecordMapper mapper) {
+    public AiUsageService(
+            AiUsageRecordMapper mapper,
+            @Value("${ai.usage.input-cost-per-million-usd:0}") double inputCostPerMillionUsd,
+            @Value("${ai.usage.output-cost-per-million-usd:0}") double outputCostPerMillionUsd
+    ) {
         this.mapper = mapper;
+        this.inputCostPerMillionUsd = Math.max(0, inputCostPerMillionUsd);
+        this.outputCostPerMillionUsd = Math.max(0, outputCostPerMillionUsd);
     }
 
     @Transactional(propagation = Propagation.REQUIRES_NEW)
@@ -54,8 +63,18 @@ public class AiUsageService {
                 safe(aggregate.getCompletionTokens()),
                 safe(aggregate.getTotalTokens()),
                 safe(aggregate.getCacheHitTokens()),
-                safe(aggregate.getCacheMissTokens())
+                safe(aggregate.getCacheMissTokens()),
+                estimateCostUsd(
+                        safe(aggregate.getPromptTokens()),
+                        safe(aggregate.getCompletionTokens())
+                )
         );
+    }
+
+    private double estimateCostUsd(long promptTokens, long completionTokens) {
+        var cost = promptTokens * inputCostPerMillionUsd / 1_000_000.0
+                + completionTokens * outputCostPerMillionUsd / 1_000_000.0;
+        return Math.round(cost * 1_000_000.0) / 1_000_000.0;
     }
 
     private void save(

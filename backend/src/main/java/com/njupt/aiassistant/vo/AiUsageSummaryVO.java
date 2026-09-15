@@ -10,6 +10,7 @@ public record AiUsageSummaryVO(
         long completionTokens,
         long totalTokens,
         long cacheHitTokens,
-        long cacheMissTokens
+        long cacheMissTokens,
+        double estimatedCostUsd
 ) {
 }

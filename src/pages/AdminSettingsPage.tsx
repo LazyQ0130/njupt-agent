@@ -225,6 +225,12 @@ export function AdminSettingsPage() {
         helper: `未命中 ${formatCompact(usage?.cacheMissTokens)}`,
         icon: Database,
       },
+      {
+        label: "估算费用（USD）",
+        value: `$${(usage?.estimatedCostUsd ?? 0).toFixed(6)}`,
+        helper: "按后台配置的模型单价计算",
+        icon: Coins,
+      },
     ],
     [usage],
   );

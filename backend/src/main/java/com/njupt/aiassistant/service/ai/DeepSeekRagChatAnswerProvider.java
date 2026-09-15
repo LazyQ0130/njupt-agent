@@ -115,7 +115,9 @@ public class DeepSeekRagChatAnswerProvider implements ChatAnswerProvider {
                     key,
                     new ChatSource(
                             item.filename(),
-                            "official",
+                            item.sourceType() == null || item.sourceType().isBlank()
+                                    ? "official"
+                                    : item.sourceType(),
                             item.page(),
                             item.score(),
                             item.source(),

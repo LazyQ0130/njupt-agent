@@ -176,6 +176,11 @@ class ChromaVectorStore:
                     if document.metadata.get("source_url")
                     else None
                 ),
+                source_type=(
+                    str(document.metadata["source_type"])
+                    if document.metadata.get("source_type")
+                    else None
+                ),
                 category=(
                     str(document.metadata["category"])
                     if document.metadata.get("category")

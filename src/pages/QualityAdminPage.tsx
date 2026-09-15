@@ -148,6 +148,7 @@ export function QualityAdminPage() {
           <section className="admin-stats quality-stats">
             {([
               ["总回答次数", stats?.totalAnswers ?? 0, "已生成回答", MessageSquareText],
+              ["匿名用户数", stats?.uniqueAnonymousUsers ?? 0, "去重会话标识", Database],
               ["好评率", `${stats?.helpfulRate ?? 0}%`, `${stats?.helpfulCount ?? 0} 条好评`, ThumbsUp],
               ["差评数量", stats?.incorrectCount ?? 0, "待核查回答", ThumbsDown],
               ["已收集反馈", stats?.feedbackCount ?? 0, "质量样本", Database],
@@ -204,6 +205,10 @@ export function QualityAdminPage() {
                       <strong>{report.averageScore}</strong><span>平均分</span>
                       <i><b style={{ width: `${report.averageScore}%` }} /></i>
                     </div>
+                    <div className={`evaluation-gate ${report.gatePassed ? "passed" : "failed"}`}>
+                      <strong>{report.gatePassed ? "达到上线门槛" : "未达到上线门槛"}</strong>
+                      {!report.gatePassed && <span>{report.gateFailures.join("、")}</span>}
+                    </div>
                     <div className="quality-rates">
                       <div><span>来源覆盖</span><strong>{report.sourceCoverage}%</strong></div>
                       <div><span>来源匹配</span><strong>{report.sourceMatchRate}%</strong></div>
@@ -245,6 +250,32 @@ export function QualityAdminPage() {
                   </div>
                 ))}
               </div>
+            </section>
+          )}
+
+          {!isLoading && stats && (
+            <section className="quality-panel low-quality-panel">
+              <div className="quality-panel-heading">
+                <div>
+                  <h2>低质量问题簇</h2>
+                  <p>
+                    置信度低于 70 或被标记为不准确的问题，当前 {stats.lowConfidenceIncorrectCount} 条同时满足两项
+                  </p>
+                </div>
+                <ThumbsDown size={19} />
+              </div>
+              {stats.lowQualityQuestions.length ? (
+                <div className="low-quality-list">
+                  {stats.lowQualityQuestions.map((item) => (
+                    <div key={item.question}>
+                      <strong>{item.question}</strong>
+                      <span>{item.occurrences} 次 · {item.incorrectCount} 条差评 · 平均置信度 {item.averageConfidence}%</span>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="quality-empty">暂未发现低置信度或差评问题。</div>
+              )}
             </section>
           )}
         </div>

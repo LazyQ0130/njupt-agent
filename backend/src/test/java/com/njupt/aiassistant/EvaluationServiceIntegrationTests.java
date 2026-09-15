@@ -61,6 +61,9 @@ class EvaluationServiceIntegrationTests {
         assertThat(report.runId()).isNotBlank();
         assertThat(report.sourceCoverage()).isEqualTo(100.0);
         assertThat(report.nonEmptyRate()).isEqualTo(100.0);
+        assertThat(report.gatePassed()).isFalse();
+        assertThat(report.gateFailures())
+                .contains("来源匹配率低于 85%", "人工准确率尚未完成复核");
         assertThat(report.averageScore()).isBetween(0.0, 100.0);
         assertThat(report.categoryScores()).containsOnlyKeys(
                 "NEW_STUDENT",

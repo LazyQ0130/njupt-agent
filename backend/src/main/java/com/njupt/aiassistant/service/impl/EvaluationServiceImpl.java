@@ -31,6 +31,10 @@ public class EvaluationServiceImpl implements EvaluationService {
 
     private static final String NO_KNOWLEDGE =
             "知识库中暂无相关信息，请咨询相关部门。";
+    private static final double MIN_NON_EMPTY_RATE = 98.0;
+    private static final double MIN_SOURCE_COVERAGE = 95.0;
+    private static final double MIN_SOURCE_MATCH_RATE = 85.0;
+    private static final double MIN_HUMAN_ACCURACY = 90.0;
 
     private final AiProviderRouter providerRouter;
     private final EvaluationResultMapper resultMapper;
@@ -192,6 +196,23 @@ public class EvaluationServiceImpl implements EvaluationService {
                 Collectors.averagingInt(EvaluationItemVO::score)
         ));
         categoryScores.replaceAll((category, score) -> percent(score));
+        var gateFailures = new ArrayList<String>();
+        if (ratio(items.stream()
+                .filter(EvaluationItemVO::nonEmpty).count(), total)
+                < MIN_NON_EMPTY_RATE) {
+            gateFailures.add("非空率低于 98%");
+        }
+        if (sourceCoverage < MIN_SOURCE_COVERAGE) {
+            gateFailures.add("来源覆盖率低于 95%");
+        }
+        if (sourceMatchRate < MIN_SOURCE_MATCH_RATE) {
+            gateFailures.add("来源匹配率低于 85%");
+        }
+        if (humanAccuracyRate == null) {
+            gateFailures.add("人工准确率尚未完成复核");
+        } else if (humanAccuracyRate < MIN_HUMAN_ACCURACY) {
+            gateFailures.add("人工准确率低于 90%");
+        }
         return new EvaluationReportVO(
                 runId,
                 total,
@@ -202,6 +223,8 @@ public class EvaluationServiceImpl implements EvaluationService {
                 nonEmptyRate,
                 humanReviewedCount,
                 humanAccuracyRate,
+                gateFailures.isEmpty(),
+                List.copyOf(gateFailures),
                 categoryScores,
                 LocalDateTime.now(),
                 List.copyOf(items)

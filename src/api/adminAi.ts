@@ -38,6 +38,7 @@ export interface AiUsageSummary {
   totalTokens: number;
   cacheHitTokens: number;
   cacheMissTokens: number;
+  estimatedCostUsd: number;
 }
 
 export interface AiOverview {
